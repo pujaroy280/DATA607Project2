@@ -1,0 +1,466 @@
+---
+title: "DATA 607 Project 2: Data Transformation"
+author: "Puja Roy"
+date: "2023-03-03"
+output: openintro::lab_report
+---
+
+### Introduction
+The objective of this assignment is to select any 3 wide datasets from the Week#6 Discussion board and practice tidying and transforming the data using R programming and libraries including tidyr and dplyr. Then, perform analysis based on classmates requests from the discussion board. 
+
+### Load Libraries
+```{r load-packages, message=FALSE}
+library(tidyverse)
+library(openintro)
+
+library(readr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+### MTA data
+
+For the first dataset, I selected the MTA data from https://data.ny.gov/Transportation/MTA-Daily-Ridership-Data-Beginning-2020/vxuj-8kew/data_preview . This data provides information about MTA Ridership in 2020 or also known as during the global COVID pandemic. It determines how Ridership for New Yorkers changed drastically throughout time once the pandemic started. 
+
+A classmate requested to perform analysis on:
+
+- Summarize the 2020, 2021, and 2022 average ridership for Subway, Buses, LIRR, and Metro-North
+- Compare the Subway and Buses and determine did more people take the Subway or Bus in 2020.
+- Which transportation has the highest and lowest ridership in 2020?
+
+First, I obtained the data from the url of my github from where I stored the CSV file. Then, I observed the columns and rows so that I can become familiar with the data structure and perform analysis. The data is untidy because the column names were long and had excessive characters that could improve on becoming more simplified so that the variables are readable. 
+```{r}
+url <- "https://raw.githubusercontent.com/pujaroy280/DATA607Project2/main/MTA_Daily_Ridership_Data__Beginning_2020_20240303.csv"
+MTA_data <- read.csv(url) 
+head(MTA_data)
+```
+I tidied and transformed the data by renaming the columns and removing NA values. I converted the data type to date type to extract the year easily for analysis.
+```{r}
+print(colnames(MTA_data)) # Print column names
+```
+```{r}
+# Rename columns
+new_column_names <- c(
+    "Subways_Total_Estimated_Ridership",
+    "Subways_Comparable_Pre_Pandemic_Day",
+    "Buses_Total_Estimated_Ridership",
+    "Buses_Comparable_Pre_Pandemic_Day",
+    "LIRR_Total_Estimated_Ridership",
+    "LIRR_Comparable_Pre_Pandemic_Day",
+    "Metro_North_Total_Estimated_Ridership",
+    "Metro_North_Comparable_Pre_Pandemic_Day",
+    "Access_A_Ride_Total_Scheduled_Trips",
+    "Access_A_Ride_Comparable_Pre_Pandemic_Day",
+    "Bridges_and_Tunnels_Total_Traffic",
+    "Bridges_and_Tunnels_Comparable_Pre_Pandemic_Day",
+    "Staten_Island_Railway_Total_Estimated_Ridership",
+    "Staten_Island_Railway_Comparable_Pre_Pandemic_Day"
+)
+names(MTA_data)[-1] <- new_column_names
+```
+
+This code will remove all rows containing NA values from the dataset MTA_data, and then print out the dimensions and structure of the updated dataset to verify that NA values have been removed.
+
+```{r}
+# Remove NA values
+MTA_data <- na.omit(MTA_data)
+
+# Check the dimensions of the updated dataset
+print(dim(MTA_data))
+
+# Check the structure of the updated dataset
+print(str(MTA_data))
+```
+```{r}
+# Convert Date column to Date type
+MTA_data$Date <- mdy(MTA_data$Date)
+
+# Extract year from Date column
+MTA_data$Year <- year(MTA_data$Date)
+
+# Filter for the years 2020, 2021, and 2022
+MTA_data_filtered <- MTA_data %>% 
+  filter(Year %in% c(2020, 2021, 2022))
+```
+
+To summarize the 2020, 2021 and 2022 average ridership for Subway, Buses, LIRR, and Metro-North, I filtered the data by grouping the year and computing the mean for total estimated ridership for each commute type. Then, I printed the summary data to analyze the data.
+
+```{r}
+# Summarize the 2020, 2021, and 2022 average ridership for Subway, Buses, LIRR, and Metro-North
+summary_data <- MTA_data_filtered %>%
+  group_by(Year) %>%
+  summarize(
+    Subway_avg_ridership = mean(Subways_Total_Estimated_Ridership, na.rm = TRUE),
+    Buses_avg_ridership = mean(Buses_Total_Estimated_Ridership, na.rm = TRUE),
+    LIRR_avg_ridership = mean(LIRR_Total_Estimated_Ridership, na.rm = TRUE),
+    Metro_North_avg_ridership = mean(Metro_North_Total_Estimated_Ridership, na.rm = TRUE)
+  )
+
+# Print summarized data
+print(summary_data)
+```
+
+After that, I filtered the MTA data based on the commute type of 2020 to compute the sum of total ridership of Subway and Buses in 2020. Based on the results, more NYC commuters traveled by taking the Subway than the Bus in 2020. 
+
+```{r}
+# Compare the total ridership of Subway and Buses in 2020
+subway_total_2020 <- sum(MTA_data_filtered$Subways_Total_Estimated_Ridership[MTA_data_filtered$Year == 2020], na.rm = TRUE)
+buses_total_2020 <- sum(MTA_data_filtered$Buses_Total_Estimated_Ridership[MTA_data_filtered$Year == 2020], na.rm = TRUE)
+
+cat("Total Subway ridership in 2020:", subway_total_2020, "\n")
+cat("Total Bus ridership in 2020:", buses_total_2020, "\n")
+if (subway_total_2020 > buses_total_2020) {
+  cat("More people took the Subway than Bus in 2020.\n")
+} else if (subway_total_2020 < buses_total_2020) {
+  cat("More people took the Bus than Subway in 2020.\n")
+} else {
+  cat("Equal number of people took Subway and Bus in 2020.\n")
+}
+```
+To determine the transportation mode with the highest and lowest ridership in 2020, I filtered the dataset again based on the year and computed the max and min based on total estimated ridership within commute types. Most NYC riders travel in Subway than in the LIRR. 
+```{r}
+# Determine transportation mode with the highest and lowest ridership in 2020
+transportation_2020 <- MTA_data_filtered %>%
+  filter(Year == 2020) %>%
+  select(Subways_Total_Estimated_Ridership, Buses_Total_Estimated_Ridership, LIRR_Total_Estimated_Ridership, Metro_North_Total_Estimated_Ridership)
+
+transportation_2020 <- gather(transportation_2020, key = "Transportation_Mode", value = "Ridership")
+
+highest_ridership <- transportation_2020 %>%
+  filter(Ridership == max(Ridership, na.rm = TRUE))
+
+lowest_ridership <- transportation_2020 %>%
+  filter(Ridership == min(Ridership, na.rm = TRUE))
+
+cat("Transportation mode with the highest ridership in 2020:", highest_ridership$Transportation_Mode, "\n")
+cat("Transportation mode with the lowest ridership in 2020:", lowest_ridership$Transportation_Mode, "\n")
+```
+
+This visualization displays trends of average ridership for Subway, Buses, LIRR, and Metro-North for the years 2020, 2021, and 2022.
+```{r}
+library(ggplot2)
+library(scales)  # Required for label_number function
+
+# Visualize the average ridership for Subway, Buses, LIRR, and Metro-North for the years 2020, 2021, and 2022
+avg_ridership_plot <- ggplot(summary_data, aes(x = Year)) +
+  geom_line(aes(y = Subway_avg_ridership, color = "Subway")) +
+  geom_line(aes(y = Buses_avg_ridership, color = "Buses")) +
+  geom_line(aes(y = LIRR_avg_ridership, color = "LIRR")) +
+  geom_line(aes(y = Metro_North_avg_ridership, color = "Metro-North")) +
+  labs(title = "Average Ridership Over Years",
+       x = "Year",
+       y = "Average Ridership",
+       color = "Transportation Mode") +
+  scale_color_manual(values = c("Subway" = "blue", "Buses" = "red", "LIRR" = "green", "Metro-North" = "purple")) +
+  theme_minimal() +
+  scale_y_continuous(labels = label_number())
+
+# Print the plot
+print(avg_ridership_plot)
+
+```
+
+This visualization displays that NYC commuters traveled on the Subway than the bus because taking the subway is more convenient and faster than the bus since traffic in the city might cause major delays while going to work, school or completing an errand. 
+
+```{r}
+# Visualize the comparison between Subway and Buses ridership in 2020
+ridership_comparison_2020 <- data.frame(
+  Transportation_Mode = c("Subway", "Bus"),
+  Total_Ridership = c(subway_total_2020, buses_total_2020)
+)
+
+comparison_plot <- ggplot(ridership_comparison_2020, aes(x = Transportation_Mode, y = Total_Ridership, fill = Transportation_Mode)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Subway vs Bus Ridership in 2020",
+       x = "Transportation Mode",
+       y = "Total Ridership") +
+  scale_fill_manual(values = c("Subway" = "blue", "Bus" = "red")) +
+  theme_minimal() +
+  scale_y_continuous(labels = label_number())
+
+# Print the plot
+print(comparison_plot)
+```
+
+### Nobel Peace Prize Data
+
+The second dataset I chose was the Nobel Peace Prize data. This data can be accessed through this link: https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/HYRJDX. 
+
+A Fellow requested to perform analysis on:
+
+- Are there patterns of recognition in different fields? (Physics, Chemistry, etc.) Which field has received a higher number of awards? What factors may have contributed to this? 
+
+- How have the number of awards given out each year changed over time?
+
+- Which field has received the largest prize amount? Which field has received the lowest?
+
+- What proportion of the awards are given to women vs men? How has this changed over time?
+
+
+Once I loaded the data, I conducted exploratory data analysis to review the observations and variables. This data is untidy because it contained 18,910 empty cells, empty columns and rows that were empty. I also noticed that some of the columns were identical to the other columns present but had slightly different variable names. These features in the dataset made it difficult to understand and process the data. 
+
+```{r}
+url <- "https://raw.githubusercontent.com/pujaroy280/DATA607Project2/main/NobelPrizes.csv"
+noble_peace_prize_data <- read.csv(url) 
+head(noble_peace_prize_data)
+print(noble_peace_prize_data)
+```
+```{r}
+print(colnames(noble_peace_prize_data)) # Print column names
+```
+Tidy & Transform Data:
+
+I tidied and transformed the data by removing empty cells especially columns. To add on, I remove columns and rows more than 50% missing values. I also removed other columns that were redundant and therefore not needed.
+
+```{r}
+# Check for empty cells
+empty_cells <- sum(noble_peace_prize_data == "")
+cat("Number of empty cells:", empty_cells, "\n")
+```
+```{r}
+# Remove columns with more than 50% missing values
+new_noble_peace_prize_data <- noble_peace_prize_data[, colMeans(noble_peace_prize_data == "") < 0.50]
+
+# Remove rows with more than 50% missing values
+new_noble_peace_prize_data <- new_noble_peace_prize_data[rowMeans(noble_peace_prize_data == "") < 0.50, ]
+
+# Print the dimensions of the dataset after removing columns and rows with more than 50% missing values
+cat("Dimensions of the dataset after removing columns and rows with more than 50% missing values:", dim(new_noble_peace_prize_data), "\n")
+```
+```{r}
+# Remove columns that are not needed
+columns_to_remove <- c("sortOrder", "portion", "prizeAmount", "dateAwarded", "prizeStatus", "award_link", "id", "name", "knownName", "givenName", "familyName", "laureate_link", "birth_city", "birth_country", "birth_locationString", "death_date", "death_city",  "death_cityNow", "death_continent", "death_country", "death_countryNow", "death_locationString", "ind_or_org")
+
+new_noble_peace_prize_data <- new_noble_peace_prize_data %>%
+  select(-one_of(columns_to_remove))
+```
+
+Are there patterns of recognition in different fields?
+
+To analyze the patterns of recognition in different fields, we can count the number of awards received in each field. I filtered the data by grouping the category of noble peace prizes to generate the number of awards.
+```{r}
+# Count the number of awards received in each field
+field_counts <- new_noble_peace_prize_data %>%
+  group_by(category) %>%
+  summarise(num_awards = n())
+
+# Print the field counts
+print(field_counts)
+
+```
+This provides information on the number of awards received in each field. Physiology or Medicine category had the greatest number of awards awarded to winners. On the other hand, Economic Sciences category was awarded the least to recipients.
+
+How have the number of awards given out each year changed over time?
+
+To analyze how the number of awards given out each year has changed over time, we can count the number of awards given each year based on the Prize Name Category.
+
+```{r}
+# Count the number of awards given out each year for each categoryFullName
+yearly_category_counts <- new_noble_peace_prize_data %>%
+  group_by(awardYear, categoryFullName) %>%
+  summarise(num_awards = n())
+
+# Print the yearly award counts for each categoryFullName
+print(yearly_category_counts)
+
+```
+```{r}
+# Sort the yearly award counts dataframe in descending order by num_awards
+yearly_category_counts_sorted <- yearly_category_counts %>%
+  arrange(desc(num_awards))
+
+# Print the yearly award counts for each categoryFullName in descending order
+print(yearly_category_counts_sorted)
+
+```
+```{r}
+library(ggplot2)
+
+# Plot the yearly award counts for each categoryFullName
+ggplot(yearly_category_counts_sorted, aes(x = awardYear, y = num_awards, fill = categoryFullName)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Number of Awards Given Out Each Year by Category",
+       x = "Year",
+       y = "Number of Awards") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),  # Adjust angle here
+        axis.title.x = element_blank()) +  # Remove x-axis title if desired
+  scale_fill_viridis_d()  # You can change the color scale if desired
+
+```
+
+Throughout each year, the Nobel Peace Prize categoryFullName has the highest count of awards (num_awards) among all the categoryFullName values in the dataset, while the Sveriges prize has the lowest count of awards from ranging from the 1960s to present time.
+
+```{r}
+# Find the row with the highest number of award counts
+max_awards_row <- yearly_category_counts[which.max(yearly_category_counts$num_awards), ]
+
+# Print the year and categoryFullName with the highest number of award counts
+cat("Year with the most number of award counts:", max_awards_row$awardYear, "\n")
+cat("CategoryFullName with the most number of award counts:", max_awards_row$categoryFullName, "\n")
+cat("Number of award counts:", max_awards_row$num_awards, "\n")
+
+# Find the row with the lowest number of award counts
+min_awards_row <- yearly_category_counts[which.min(yearly_category_counts$num_awards), ]
+
+# Print the year and categoryFullName with the lowest number of award counts
+cat("Year with the least number of award counts:", min_awards_row$awardYear, "\n")
+cat("CategoryFullName with the least number of award counts:", min_awards_row$categoryFullName, "\n")
+cat("Number of award counts:", min_awards_row$num_awards, "\n")
+
+```
+
+The year with the most number of award counts were in 1903. The Nobel Prize in Physics was the category with the most number of award counts. Whereas, 1901 was the year with the least number of award counts and the Nobel Prize in Literature was the category with the least number of award counts.
+
+
+Which field has received the largest prize amount? Which field has received the lowest?
+
+To find out which field has received the largest and lowest prize amounts, we can calculate the total prize amount received in each field.
+
+```{r}
+# Calculate the total prize amount received in each field
+field_prize_amounts <- new_noble_peace_prize_data %>%
+  group_by(category) %>%
+  summarise(total_prize_amount = sum(prizeAmountAdjusted, na.rm = TRUE))
+
+# Print the field prize amounts
+print(field_prize_amounts)
+
+# Sort the field prize amounts dataframe in descending order by total_prize_amount
+field_prize_amounts_sorted <- field_prize_amounts %>%
+  arrange(desc(total_prize_amount))
+
+# Print the field prize amounts in descending order
+print(field_prize_amounts_sorted)
+
+```
+This will provide information based on the total prize amount received in each field. Physics received the largest prize amount and Literature received the lowest prize amount.
+
+What proportion of the awards are given to women vs men? How has this changed over time?
+
+To analyze the proportion of awards given to women vs men and how it has changed over time, we need to identify the gender of the recipients and then calculate the proportion for each year.
+
+```{r}
+# Calculate the proportion of awards given to women vs men
+gender_proportions <- new_noble_peace_prize_data %>%
+  group_by(gender) %>%
+  summarise(num_awards = n()) %>%
+  mutate(proportion = num_awards / sum(num_awards))
+
+# Print the gender proportions
+print(gender_proportions)
+
+```
+
+This will give us the proportion of awards given to women vs men. We can then analyze how this proportion has changed over time.
+
+```{r}
+library(ggplot2)
+
+# Plot the pie chart
+ggplot(gender_proportions, aes(x = "", y = proportion, fill = gender)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  labs(title = "Proportion of Awards Given to Women vs Men",
+       fill = "Gender",
+       x = NULL,
+       y = NULL) +
+  theme_void() +
+  theme(legend.position = "right")  # Adjusting position of the legend
+
+```
+
+Throughout each year, 94.1% of males received more awards, whereas 5.86% females received less awards. 
+
+### New York City Airbnb Open Data
+
+The third dataset I selected for this project was the NYC Airbnb Open data accessed through this link: https://www.kaggle.com/datasets/dgomonov/new-york-city-airbnb-open-data/data . 
+
+A Fellow requested to perform analysis based on:
+
+- Which areas would allow you to rent an entire home or apartment for the least about of money based on grouping by borough?
+
+- Which borough in NYC has the least rent for an entire home/ apartment?
+
+Once I loaded the data, I noticed that this data was also untidy due to containing irrelevant columns and slightly identical column names were present. To add on, one of the column names neighborhood_group should have been labeled as borough. 
+
+```{r}
+url <- "https://raw.githubusercontent.com/pujaroy280/DATA607Project2/main/AB_NYC_2019.csv"
+NYC_airbnb_data <- read.csv(url) 
+head(NYC_airbnb_data)
+```
+
+Tidy and transform the data
+
+I tidied and transformed the data by removing unwanted columns and renaming columns to organize the features present in the data.
+```{r}
+print(colnames(NYC_airbnb_data)) # Print column names
+```
+```{r}
+# Remove columns that are not needed
+columns_to_remove <- c("id", "host_id", "latitude", "longitude", "last_review", "calculated_host_listings_count", "availability_365")
+
+new_NYC_airbnb_data <- NYC_airbnb_data %>%
+  select(-one_of(columns_to_remove))
+```
+
+```{r}
+# Rename the column
+names(new_NYC_airbnb_data)[names(new_NYC_airbnb_data) == "neighbourhood_group"] <- "borough"
+
+# View the modified dataframe
+head(new_NYC_airbnb_data)
+```
+
+To filter data to include only entire home/apartment listings, I had to subset and filter the room type. 25,409 records of Airbnb's appeared with different hosts. 
+
+```{r}
+# Filter data to include only entire home/apartment listings
+entire_home_apartment_data <- subset(new_NYC_airbnb_data, room_type == "Entire home/apt")
+
+print(entire_home_apartment_data)
+```
+
+```{r}
+library(ggplot2)
+
+# Reorder the levels of neighbourhood_group based on count of listings
+entire_home_apartment_data$borough <- factor(entire_home_apartment_data$borough, 
+                                                         levels = names(sort(table(entire_home_apartment_data$borough), decreasing = TRUE)))
+
+# Create a bar plot of the count of entire home/apartment listings by borough
+ggplot(entire_home_apartment_data, aes(x = borough)) +
+  geom_bar(fill = "skyblue") +
+  labs(title = "Number of Entire Home/Apartment Listings by Borough in NYC",
+       x = "Borough",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+
+```
+
+Manhattan was the borough in NYC with the highest number of entire home/apartment listings during 2019 and Staten Island had the least.
+
+To calculate average rent of residing in NYC, I grouped data by each borough and computed the mean to obtain results based on renting entire home/apartment listings.
+
+```{r}
+# Group data by borough and calculate average rent
+average_rent_by_borough <- aggregate(price ~ borough, data = entire_home_apartment_data, FUN = mean)
+
+# Sort the average rent by borough dataframe in descending order by price
+average_rent_by_borough_sorted <- average_rent_by_borough[order(average_rent_by_borough$price, decreasing = TRUE), ]
+
+# Print the average rent by borough in descending order
+print(average_rent_by_borough_sorted)
+```
+
+After analyzing the average rent for entire home/apartment listings by borough, it was found that Manhattan has the highest average rent of $249.24. This indicates that Manhattan is the most expensive borough for renting entire homes or apartments among the boroughs included in the NYC Airbnb dataset from 2019. Conversely, the Bronx had the lowest average rent at $127.51, making it the most affordable borough for renting entire homes or apartments. This is accurate since I reside in the Bronx and can't afford to live in the other boroughs due to high rent and costs of living.
+
+### Conclusion
+
+Throughout this project, I gained extensive experience working with untidy data and using R programming and data manipulation libraries such as tidyr and dplyr to tidy the data. The 3 data that I worked with are all tidy now because I made sure to remove columns that were not required for analysis, renamed certain columns for interpretation and removed empty columns and rows. Most importantly, I transformed the data sets above by grouping them based on the features present from the data. It was also easier to draw conclusions based on the trends and insights due to generating visualizations leveraging ggplot. 
+
+
+...
+
