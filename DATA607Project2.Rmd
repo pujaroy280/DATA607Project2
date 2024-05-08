@@ -39,6 +39,8 @@ I tidied and transformed the data by renaming the columns and removing NA values
 ```{r}
 print(colnames(MTA_data)) # Print column names
 ```
+
+
 ```{r}
 # Rename columns
 new_column_names <- c(
@@ -183,6 +185,26 @@ comparison_plot <- ggplot(ridership_comparison_2020, aes(x = Transportation_Mode
 print(comparison_plot)
 ```
 
+### Tidying the data
+
+The MTA data is in a tidy format where each row represents one observation of ridership data for a specific transportation mode on a specific date.
+
+```{r}
+library(tidyr)
+
+# Reshape data to long format
+tidy_MTA_data <- MTA_data %>%
+  select(Date, starts_with("Subways_Total_Estimated_Ridership"), starts_with("Buses_Total_Estimated_Ridership"), starts_with("LIRR_Total_Estimated_Ridership"), starts_with("Metro_North_Total_Estimated_Ridership")) %>%
+  pivot_longer(cols = -Date, names_to = "Transportation_Mode", values_to = "Ridership")
+
+# Remove NA values
+tidy_MTA_data <- tidy_MTA_data %>% na.omit()
+
+# Print tidy data
+print(head(tidy_MTA_data))
+
+```
+
 ### Nobel Peace Prize Data
 
 The second dataset I chose was the Nobel Peace Prize data. This data can be accessed through this link: https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/HYRJDX. 
@@ -209,9 +231,9 @@ print(noble_peace_prize_data)
 ```{r}
 print(colnames(noble_peace_prize_data)) # Print column names
 ```
-Tidy & Transform Data:
+Transform Data:
 
-I tidied and transformed the data by removing empty cells especially columns. To add on, I remove columns and rows more than 50% missing values. I also removed other columns that were redundant and therefore not needed.
+I transformed the data by removing empty cells especially columns. To add on, I remove columns and rows more than 50% missing values. I also removed other columns that were redundant and therefore not needed.
 
 ```{r}
 # Check for empty cells
@@ -373,6 +395,21 @@ ggplot(gender_proportions, aes(x = "", y = proportion, fill = gender)) +
 
 Throughout each year, 94.1% of males received more awards, whereas 5.86% females received less awards. 
 
+### Tidying the data
+
+```{r}
+# One observation per row
+tidy_nobel_data <- noble_peace_prize_data %>%
+  select(awardYear, category, gender, prizeAmount)
+
+# Remove NA values
+tidy_nobel_data <- tidy_nobel_data %>% na.omit()
+
+# Print tidy data
+print(head(tidy_nobel_data))
+```
+
+
 ### New York City Airbnb Open Data
 
 The third dataset I selected for this project was the NYC Airbnb Open data accessed through this link: https://www.kaggle.com/datasets/dgomonov/new-york-city-airbnb-open-data/data . 
@@ -391,12 +428,14 @@ NYC_airbnb_data <- read.csv(url)
 head(NYC_airbnb_data)
 ```
 
-Tidy and transform the data
+Transform the data
 
-I tidied and transformed the data by removing unwanted columns and renaming columns to organize the features present in the data.
+I transformed the data by removing unwanted columns and renaming columns to organize the features present in the data.
 ```{r}
 print(colnames(NYC_airbnb_data)) # Print column names
 ```
+
+
 ```{r}
 # Remove columns that are not needed
 columns_to_remove <- c("id", "host_id", "latitude", "longitude", "last_review", "calculated_host_listings_count", "availability_365")
@@ -404,6 +443,7 @@ columns_to_remove <- c("id", "host_id", "latitude", "longitude", "last_review", 
 new_NYC_airbnb_data <- NYC_airbnb_data %>%
   select(-one_of(columns_to_remove))
 ```
+
 
 ```{r}
 # Rename the column
@@ -421,6 +461,7 @@ entire_home_apartment_data <- subset(new_NYC_airbnb_data, room_type == "Entire h
 
 print(entire_home_apartment_data)
 ```
+
 
 ```{r}
 library(ggplot2)
@@ -457,10 +498,25 @@ print(average_rent_by_borough_sorted)
 
 After analyzing the average rent for entire home/apartment listings by borough, it was found that Manhattan has the highest average rent of $249.24. This indicates that Manhattan is the most expensive borough for renting entire homes or apartments among the boroughs included in the NYC Airbnb dataset from 2019. Conversely, the Bronx had the lowest average rent at $127.51, making it the most affordable borough for renting entire homes or apartments. This is accurate since I reside in the Bronx and can't afford to live in the other boroughs due to high rent and costs of living.
 
+### Tidying the Data
+```{r}
+# Filter data for entire home/apartment listings
+entire_home_apartment_data <- NYC_airbnb_data %>%
+  filter(room_type == "Entire home/apt")
+
+# Tidy data
+tidy_NYC_airbnb_data <- entire_home_apartment_data %>%
+  select(name, neighbourhood_group, neighbourhood, price, room_type)  
+
+# Remove NA values
+tidy_NYC_airbnb_data <- tidy_NYC_airbnb_data %>% na.omit()
+
+# Print tidy data
+print(head(tidy_NYC_airbnb_data))
+
+```
+
 ### Conclusion
 
-Throughout this project, I gained extensive experience working with untidy data and using R programming and data manipulation libraries such as tidyr and dplyr to tidy the data. The 3 data that I worked with are all tidy now because I made sure to remove columns that were not required for analysis, renamed certain columns for interpretation and removed empty columns and rows. Most importantly, I transformed the data sets above by grouping them based on the features present from the data. It was also easier to draw conclusions based on the trends and insights due to generating visualizations leveraging ggplot. 
-
-
-...
+Throughout this project, I gained extensive experience working with untidy data and utilizing R programming along with data manipulation libraries such as tidyr and dplyr to transform the data into a tidy format. The three datasets that I worked with have been successfully tidied by reshaping them into a longer format, ensuring that each observation corresponds to a single row. Additionally, I conducted transformations to remove unnecessary columns, rename certain columns for clarity, and eliminate empty columns and rows. By leveraging the capabilities of tidyr and dplyr, I grouped the datasets based on relevant features, facilitating a clearer understanding of the data and enabling more insightful analysis. The transformation process culminated in tidy datasets that were conducive to generating meaningful visualizations using ggplot. In summary, the process of tidying the data not only improved its organization and structure but also facilitated the extraction of valuable insights and trends, thereby enhancing the overall analysis process 
 
